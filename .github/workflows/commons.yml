@@ -1,0 +1,27 @@
+# Builds this repo and publishes the output to Commons on every push.
+# It signs in with the workflow's own OIDC token, so no secret is stored anywhere.
+name: Deploy to Commons
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: commons-deploy
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: if [ -f package-lock.json ]; then npm ci; else npm install; fi
+      - run: npm run build
+      - run: node .github/commons-deploy.mjs
+        env:
+          COMMONS_URL: https://commonsbuild.com
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
